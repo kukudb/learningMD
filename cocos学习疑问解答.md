@@ -328,7 +328,339 @@
 
 ---
 
+---
+
+## 类型断言与收窄
+
+### Q1：`const` 已经声明了常量，为什么还要 `as const`？有什么作用？
+
+**问题背景**：`const config = { speed: 100, mode: "hard" } as const;` — config 已经是 `const` 变量了，为什么还要 `as const`？
+
+**解答要点**：
+
+1. **`const` 变量声明和 `as const` 类型断言管的是不同层面**：
+   - `const` 管的是**变量绑定**：变量不能被重新赋值（`config = xxx` 报错）
+   - `as const` 管的是**值本身的类型**：所有属性变为 `readonly`，值收窄为精确字面量类型
+
+2. **对比**：
+   ```typescript
+   const a = { speed: 100 };          // a.speed 类型是 number，可修改
+   const b = { speed: 100 } as const; // b.speed 类型是 100（字面量），readonly 不可修改
+   ```
+
+3. **实际用途**：让 TS 推断出最精确的类型，以便提取联合类型：
+   ```typescript
+   const DIRS = ["up", "down"] as const;
+   type Direction = (typeof DIRS)[number]; // "up" | "down"
+   ```
+   没有 `as const` 的话，`Direction` 只会是 `string`。
+
+4. **运行时真相**：`as const` 编译后消失，JS 中属性仍然可被修改。保护仅存在于编译时——TS 拒绝编译你的修改代码，所以修改语句永远不会进入 JS 文件。如果需要运行时保护，用 `Object.freeze()`。
+
+---
+
+### Q2：`typeof` 和 `instanceof` 的区别是什么？JS 编译后类还存在吗？`instanceof` 怎么判断类？
+
+**问题背景**：`typeof` 用于类型判断，`instanceof` 用于类判断——两者分工不同，且不确定编译后类是否还存在。
+
+**解答要点**：
+
+1. **分工**：
+   - `typeof` → 判断 JS 原始类型（`"string"` `"number"` `"boolean"` `"undefined"` `"object"` `"function"` 等）
+   - `instanceof` → 判断是否为某类的实例（检查原型链）
+
+2. **JS 编译后类仍然存在**：现代目标（ES2015+）原封不动保留 `class` 关键字；ES5 目标编译为构造函数 + 原型链，同样是运行时真实存在的。
+
+3. **`instanceof` 是真实运行时检查，不是"告诉编译器"**：
+   - JS 真的去查 `ClassName.prototype` 是否在对象的原型链上
+   - TS 只是"蹭"这个检查结果来自动收窄类型
+   - 与 `as` 完全不同——`as` 运行时消失，`instanceof` 运行时真实执行
+
+4. **与 Java 的对比**：Java `instanceof` 也是运行时检查（JVM 的 `checkcast`），但检查后仍需手动强转 `(Dog) animal`。TS 的 `instanceof` 检查后**自动收窄**，无需写 `as`。
+
+---
+
+### Q3：开发场景下推荐使用断言，还是做真正的判断（如判别联合）？
+
+**问题背景**：`as` 方便但有风险，判别联合更安全但需要设计——实战中怎么选择？
+
+**解答要点**：
+
+1. **优先级排序**：
+   ```
+   类型收窄(判别联合/instanceof/typeof/in) > 非空断言 ! > as 断言 > as unknown as T
+   首选 ✅                                 慎用 ⚠️     少用 ⚠️   最后手段 🚨
+   ```
+
+2. **必须用 `as` 的少数场景**（无法用运行时检查表达）：
+   - Cocos `getComponent(Sprite) as Sprite`
+   - 后端 JSON 数据 `data as PlayerData`（但推荐加 Zod 校验）
+   - DOM API 返回值
+
+3. **不应使用 `as`，应用收窄的场景**：
+   - 联合类型的分支处理 → 判别联合
+   - 判断是否为某类实例 → `instanceof`
+   - 判断基础类型 → `typeof`
+   - 检查属性是否存在 → `in`
+   - 判空后调用 → `if (value)` 真值收窄
+
+4. **一句话原则**：能用 `if` + `typeof`/`instanceof`/`in`/判别联合完成类型判断，就**不要**用 `as`。`as` 是最后一根稻草——当你确实比编译器知道得更多且无法用运行时检查表达时，才用它。
+
+---
+
+### Q4：`as const` 编译后消失，那 JS 中属性不就可以改了吗？
+
+**问题背景**：既然 `as` 编译时擦除，`const config = { speed: 100, mode: "hard" } as const;` 编译成 JS 后就是一个普通对象，属性在运行时完全可以被修改。
+
+**解答要点**：
+
+1. **确实是这样的**。编译后的 JS：
+   ```javascript
+   const config = { speed: 100, mode: "hard" };
+   config.speed = 999; // JS 中完美运行
+   ```
+
+2. **`as const` 保护的机制不是运行时，而是编译时拦截**：
+   - 你在 TS 中写 `config.speed = 200` → TS 拒绝编译
+   - 这行修改代码永远不会进入 JS 文件
+   - 所以**你的代码**不会在运行时修改它
+
+3. **它防不住的情况**：
+   - 其他 JS 文件直接操作这个对象
+   - 外部库或运行时反射修改
+   - 通过 `(config as any).speed = 999` 绕过
+
+4. **需要运行时保护时**：用 `Object.freeze()`：
+   ```typescript
+   const config = Object.freeze({ speed: 100, mode: "hard" } as const);
+   // 运行时 config.speed = 999 也被拒绝（严格模式报错）
+   ```
+
+5. **核心认知**：TypeScript 所有类型系统的东西（`as`、`!`、`as const`、泛型、interface）编译后全部消失。运行时安全只能靠 JS 自身机制（`instanceof`、`typeof`、`in`、`Object.freeze`、Zod 等）来保证。
+
+---
+
+## 第四节：泛型（Generic）
+
+### Q1：泛型编译后是什么样的？
+
+**问题背景**：知道接口编译后消失，泛型的 `<T>` 编译后变成什么？
+
+**解答要点**：
+
+1. **编译后 `<T>` 和所有类型参数全部消失，和 interface 完全一样**。
+
+2. **编译前后对比**：
+   ```typescript
+   // TS
+   function identity<T>(value: T): T { return value; }
+   class Cache<T> { private data = new Map<string, T>(); }
+   ```
+   ```javascript
+   // JS 产物——无任何 T，无任何类型信息
+   function identity(value) { return value; }
+   class Cache { data = new Map(); }
+   ```
+
+3. 泛型的所有"通用性"仅存在于编译时。JS 产物就是一个普通的、无类型的函数/类。
+
+---
+
+### Q2：JS 怎么做到一个方法适用多个类型？泛型不是必须的吗？
+
+**问题背景**：如果泛型编译后消失了，一个函数怎么能接受 `string`、`number` 等多种类型？
+
+**解答要点**：
+
+1. **JS 天生就是动态类型的**——变量没有固定类型，函数天然接受任何参数：
+   ```javascript
+   function identity(value) { return value; }
+   identity("hello"); // 可以
+   identity(42);      // 也可以
+   identity({});      // 完美运行
+   ```
+
+2. **泛型不是让函数"能"接受多种类型——JS 本来就能。泛型是"记录"传入的类型，让编译器在调用处给你类型保护**。
+
+3. **认知反转**：你以为泛型让函数多态，实际上泛型只是给 JS 的动态行为加了一层编译时的类型追踪。
+
+---
+
+### Q3：泛型编译后没有约束，JS 代码里如何保护泛型的使用？
+
+**问题背景**：泛型 `<T>` 编译后消失，运行时无约束，传入错误类型怎么办？
+
+**解答要点**：
+
+1. **靠运行时类型判断和收窄**。这正是断言/收窄章节学到的内容的使用场景。
+
+2. **典型模式**——在泛型函数体内用运行时检查保护：
+   ```typescript
+   function process<T>(value: T): number | null {
+     if (typeof value === "number") return value * 2;  // typeof 保护
+     if (typeof value === "string") return parseInt(value) * 2;
+     return null;
+   }
+   ```
+
+3. **两层保护体系**：
+   - 编译时：泛型 `extends` 约束 → 防止你写出不安全的代码
+   - 运行时：`typeof`/`instanceof`/`in`/类型谓词/Zod → 防止外部数据破坏
+
+---
+
+### Q4：类型谓词 `is` 和内联收窄有什么区别？不用谓词也能收窄吧？
+
+**问题背景**：`isPlayer` 方法如果不写 `obj is Player` 只返回 `boolean`，把判断逻辑直接写进 `if` 里照样能收窄。那谓词有什么用？
+
+**解答要点**：
+
+1. **内联收窄管函数内部，谓词管调用方**。
+
+2. **对比**：
+   ```typescript
+   // 只返回 boolean——调用方收窄不了
+   function isPlayer(obj: unknown): boolean { return "name" in obj; }
+   if (isPlayer(data)) { data.name; } // ❌ data 仍是 unknown
+
+   // 类型谓词——调用方获得收窄
+   function isPlayer(obj: unknown): obj is Player { return "name" in obj; }
+   if (isPlayer(data)) { data.name; } // ✅ data 收窄为 Player
+   ```
+
+3. **谓词的本质**：把函数内部的收窄结论"透传"给调用方。TS 的控制流分析无法穿透函数边界，`obj is Player` 就是在这道边界上开的门。
+
+4. **两个核心用途**：
+   - **复用**：一段判断逻辑多处使用，不复制粘贴 `&&` 链
+   - **`.filter()` 类型收窄**：`arr.filter((x): x is T => ...)` 让过滤后的数组自动收窄类型，普通 `boolean` 做不了这件事
+
+---
+
+### Q5：`keyof T` 是什么用法？
+
+**问题背景**：在泛型函数中看到 `key: keyof T` 的写法，不清楚含义——它是约束还是类型？
+
+**解答要点**：
+
+1. **`keyof` 是类型操作符（纯编译时，编译后消失）**：从一个类型上提取所有键名，组成字面量联合。
+
+2. **示例**：
+   ```typescript
+   interface GameConfig { version: number; debug: boolean; }
+   type Keys = keyof GameConfig; // "version" | "debug"
+   ```
+
+3. **在泛型中的用法**：
+   ```typescript
+   function get<T extends object>(obj: T, key: keyof T): T[keyof T] { ... }
+   //                                key 的类型 = T 的所有键名的联合
+   //                                只有 T 实际拥有的属性名才能传进去
+   ```
+
+4. **本质**：`key: keyof T` 把变量的合法值限制在 T 的键名范围内——和 `x: number` 把 x 限制在数字范围内是同一种类型约束。
+
+---
+
+### Q6：`<T>` 是约束吗？为什么不加 `<T>` 会报错？
+
+**问题背景**：习惯把 `<T>` 当成"泛型约束"，不理解为啥 `function fn(value: T): T` （不写 `<T>`）会报错。
+
+**解答要点**：
+
+1. **`<T>` 不是约束，是声明——"引入一个类型变量 T"**。约束是 `extends` 的事。
+
+2. **对比**：
+   ```typescript
+   function fn<T>(value: T): T;    // ✅ 声明了 T，然后在参数和返回值中使用
+   function fn(value: T): T;       // ❌ T 未定义——TS 去全局找叫 T 的类型
+   ```
+
+3. **类比**：`<T>` 相当于 `let T = ???`——先声明变量，才能使用。不声明直接用，和 JS 的 `x = 1`（没有 let/const）一样是未定义引用。
+
+4. **不加约束的 `<T>` 等价于接受所有类型，但和 `any` 完全不同**——`<T>` 保留了类型追踪链，`any` 截断了。
+
+---
+
+### Q7：泛型一旦确定具体类型，就能对类型进行检查吗？
+
+**问题背景**：泛型和 `any` 在使用过程中的区别——泛型确定类型后是否就获得了完整的类型检查？
+
+**解答要点**：
+
+1. **是的，这就是泛型的核心价值**。
+
+2. **对比**：
+   ```typescript
+   // any：类型链全断
+   function wrapAny(v: any): any { return { data: v }; }
+   const r1 = wrapAny("hello");
+   r1.data.toFixed(); // ✅ 编译通过，运行时崩溃——TS 不知道 data 是 string
+
+   // 泛型：类型信息完整穿过
+   function wrap<T>(v: T): { data: T } { return { data: v }; }
+   const r2 = wrap("hello");
+   r2.data.toUpperCase(); // ✅ 编译通过，安全
+   r2.data.toFixed();     // ❌ 编译报错！TS 知道 data 是 string
+   ```
+
+3. **过程**：调用 `wrap("hello")` → TS 推断 `T = string` → 参数类型 `string`（检查传入）→ 返回值 `{ data: string }`（确定形状）→ 调用方获得完整类型保护。
+
+4. **一句话**：`<T>` 让类型信息完整穿过函数。`any` 是截断——进去截断一次，出来再截断一次。
+
+---
+
+### Q8：为什么用 `const` 不用 `var`？变量提升是什么？
+
+**问题背景**：练习二对象池中用 `var data = this.factory()`，被指出应改用 `const`。不理解 `var` 的问题和"变量提升"的含义。
+
+**解答要点**：
+
+1. **变量提升（Hoisting）**：`var` 声明的变量会被 JS 引擎"提"到函数顶部，但赋值还在原位。
+   ```javascript
+   // 你写的
+   if (true) { var x = 1; }
+   // JS 实际看到的
+   var x;          // 声明提升到顶部，值为 undefined
+   if (true) { x = 1; }
+   ```
+
+2. **`var` 三大坑**：
+
+   | 问题 | `var` | `const` |
+   |------|-------|---------|
+   | 变量提升 | 声明提到函数顶，值为 `undefined`，声明前访问不报错 | 声明前访问直接 `ReferenceError` |
+   | 块级作用域 | 无，`if`/`for` 块关不住 | 有 |
+   | 重复声明 | 允许，静默覆盖 | 直接报错 |
+
+3. **选择原则**：默认 `const`，只有确实需要重新赋值才用 `let`。TS 项目里没有理由用 `var`。
+
+4. **本场景**：`data` 只赋一次值、之后不改——`const data = this.factory()`。
+
+---
+
+### 概念混淆点（泛型学习期间暴露）
+
+| 混淆点 | 现象 | 澄清 |
+|-------|------|------|
+| `<T>` 是约束 | 以为 `<T>` 在"限制"泛型 | `<T>` 是声明类型变量；`extends` 才是约束 |
+| 泛型让函数接受多类型 | 以为没了泛型函数就不能多态 | JS 天生接受任何类型；泛型只是编译时追踪 |
+| 类型谓词创造收窄 | 以为 `is` 让 TS 学会了新的推理 | 谓词只是把函数内部收窄传出去；内联判断同样能收窄 |
+
+### 练习易错模式（泛型）
+
+**根因**：下意识把 `<T>` 当成 `any`——"先声明泛型，后面再想办法收窄"。但 `<T>` 是精确承诺，签名说了什么就必须做到。
+
+| 易错模式 | 具体表现 | 正确做法 |
+|---------|---------|---------|
+| 签名承诺太多，实现只覆盖两三种 | `getTopScores<T>(type: T): T[]` 只处理 string/number | 用 `extends` 收紧签名，或补齐所有分支 |
+| 实现硬编码具体类型，泛型变摆设 | `getConfigValue<T extends GameConfig>` 体内直接 `config.version` | 用 `keyof T` 泛化 key 参数 |
+| 调用处打补丁而不改类本身 | Stack 用 `any`，调用处加 `typeof` 保护 | 类本身改成 `Stack<T>` |
+| fallback 返回不匹配类型 | `doubleValue<T>` fallback 返回字符串当 T 不是 string | fallback 返回原值保持类型一致，或收紧 T 的约束 |
+| `==` / `var` 等 JS 陋习 | 对象池中用 `==` 比较、`var` 声明 | TS 项目中统一 `===` 和 `const` |
+
+---
+
 *文档创建时间：2026-06-08*
 *首次关联章节：第三节：接口（Interface）*
 
-*文档更新时间：2026-06-09*
+*文档更新时间：2026-06-11*
