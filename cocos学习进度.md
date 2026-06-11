@@ -53,9 +53,9 @@
 ## 二、学习进度跟踪
 
 ### 总体状态
-- **当前阶段**：TypeScript 基础 → **第五节（模块化）教学中**
-- **下一目标**：第五节：模块化 → 第六节：Utility Types → 第七节：异步编程 → 第八节：声明文件 → 验收 TypeScript 基础
-- **已完成日期**：2026-06-08（接口基础定义 + 深入理解 TS 编译原理）、2026-06-09（剩余知识点 + 综合练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）
+- **当前阶段**：TypeScript 基础 → **第五节（模块化）已完成，待进入第六节（Utility Types）**
+- **下一目标**：第六节：Utility Types → 第七节：异步编程 → 第八节：声明文件 → 验收 TypeScript 基础
+- **已完成日期**：2026-06-08（接口基础定义 + 深入理解 TS 编译原理）、2026-06-09（剩余知识点 + 综合练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）
 
 ---
 
@@ -188,9 +188,37 @@
 
 ---
 
+#### 第五节：模块化（import/export）✅
+**完成时间**：2026-06-12  
+**掌握程度**：理解到位，实践暴露模块拆分细节缺漏（缺 export、文件职责混淆）、CJS 未全掌握
+
+**已学习**
+- [x] ES Module（ESM）核心机制——文件即模块、默认私有
+- [x] 命名导出 `export` / `export { }`（细粒度、可重命名）
+- [x] 默认导出 `export default`（每模块最多一个，导入方可自由命名）
+- [x] 导入语法：命名导入 `import { }`、默认导入、整体导入 `import * as`、混合导入
+- [x] 仅类型导入 `import type`（编译后必定擦除）
+- [x] `import type` 的三大存在理由：单文件转译器兼容、打断循环依赖、减少增量编译 emit
+- [x] 重导出 `export * from` / `export { default as X } from`（门面模式）
+- [x] 静态 `import` 声明 vs 动态 `import()` 表达式——本质区别（声明 vs 函数调用）
+- [x] ESM 编译时静态分析 → 依赖图 → Tree-shaking 可行
+- [x] ESM 活绑定（只读引用）vs CJS 值副本
+- [x] CJS vs ESM 对比（加载时机、语法、Tree-shaking、顶层 await）
+- [x] Cocos 实践：`export class` 是组件能被引擎发现的前提
+- [x] 常见陷阱：循环依赖、`export *` 不转发默认导出、默认导出当命名导入、interface 不能 `new`
+
+**实际完成的练习代码**
+- `test.ts`：5 处代码诊断（默认导出/命名导入混淆、缺 export、`new` interface、循环依赖、`export *` 丢默认导出）
+- 模块拆分设计（types/utils/game/index 四文件门面模式）
+- ESM vs CJS 对比表格
+
+**产生的疑问**：见 `cocos学习疑问解答.md` → 第五节：模块化（import/export）
+
+---
+
 ### 未开始的学习内容
 
-#### 第五节：模块化（import/export）🔄 教学中
+#### 第五节：模块化（import/export）✅
 #### 第六节：Utility Types（Partial, Pick, Omit, Record, ReturnType, satisfies）
 #### 第七节：异步编程（Promise, async/await）
 #### 第八节：声明文件（.d.ts）
@@ -228,8 +256,13 @@
 - [x] `keyof T` 提取键名联合
 - [x] 泛型签名与实现对齐（承诺范围 ≥ 实现范围）
 - [x] 泛型 vs `any` 的本质区别（类型追踪 vs 类型截断）
+- [x] ES 模块系统（命名导出/默认导出/重导出/门面模式）
+- [x] `import type` 与普通 `import` 的区别及使用场景
+- [x] 静态 `import` 声明 vs 动态 `import()` 表达式
+- [x] ESM 活绑定与编译时静态分析
+- [x] ESM vs CJS 核心差异
 
-**尚未掌握**：模块化（教学中）、Utility Types、异步编程、声明文件
+**尚未掌握**：Utility Types、异步编程、声明文件
 
 ---
 
@@ -238,12 +271,12 @@
 1. ~~继续第三节：接口（Interface）~~ ✅ 已完成
 2. ~~补齐类型断言与收窄~~ ✅ 已完成（2026-06-10）
 3. ~~第四节：泛型（Generic）~~ ✅ 已完成（2026-06-11）
-4. 🔄 **第五节：模块化（import/export）**——教学中，学习 ES 模块系统、命名导出/默认导出
-5. 第六节：Utility Types（Partial, Pick, Omit, Record, ReturnType, satisfies）
+4. ~~第五节：模块化（import/export）~~ ✅ 已完成（2026-06-12）
+5. 进入**第六节：Utility Types**——Partial, Pick, Omit, Record, ReturnType, satisfies
 6. 第七节：异步编程（Promise, async/await）
 7. 第八节：声明文件（.d.ts 基本概念）
 8. 验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）
 
 ---
 
-*文档更新时间：2026-06-11（调整学习顺序，补充 Utility Types / 声明文件节点）*
+*文档更新时间：2026-06-12（第五节模块化完成，深度讨论 import type / import() 机制）*

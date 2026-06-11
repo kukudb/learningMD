@@ -663,4 +663,144 @@
 *文档创建时间：2026-06-08*
 *首次关联章节：第三节：接口（Interface）*
 
-*文档更新时间：2026-06-11*
+*文档更新时间：2026-06-12*
+
+---
+
+## 第五节：模块化（import/export）
+
+### Q1：CJS 和 ESM 的加载时机具体有什么区别？
+
+**问题背景**：对比表格中 ESM 是"编译时静态分析 + 运行时执行"，CJS 是"运行时同步加载"，不太理解。
+
+**解答要点**：
+
+1. **CJS (`require`) 是普通函数调用**——可以在代码任意位置、用变量做路径、条件加载：
+   ```javascript
+   if (condition) { require("./a"); }        // 条件加载
+   require(`./modes/${name}`);                // 变量路径
+   for (const p of plugins) { require(p); }   // 循环加载
+   ```
+   编译器无法预知依赖关系——依赖图在代码跑到那一行时才逐条揭示。`require` 是**同步阻塞**的，碰到就暂停当前模块去加载执行目标模块。
+
+2. **ESM (`import`) 是声明语句**——必须在文件顶层，路径必须是字面量字符串：
+   ```typescript
+   // ❌ 全都不允许
+   if (x) { import { a } from "./m"; }
+   import { a } from someVariable;
+   ```
+   编译器扫描文件开头就能画出完整依赖树 → 按拓扑顺序依次执行模块（每个模块只执行一次）→ **不阻塞**。
+
+3. **时间线对比**：
+   - CJS：`A开始 → 碰require暂停A → 加载执行B → B跑完 → 回A继续`
+   - ESM：编译时已排好序 `B先执行 → A后执行`，运行时直接按序跑
+
+4. **为什么这个区别重要**：Tree-shaking 依赖静态依赖图——CJS 做不到，因为编译器不知道 `require("./x")` 到底用了 x 的哪个导出。
+
+---
+
+### Q2：静态 `import` 和动态 `import()` 都用 import 关键字，为什么动态的可以放在条件里？
+
+**问题背景**：误以为它们是同一个东西——既然 ESM 必须在顶层，为什么 `import()` 可以到处用？
+
+**解答要点**：
+
+1. **它们是两种完全不同的东西，只是碰巧共用 `import` 这个名字**：
+   - `import { x } from "./m"` → **声明语句（Declaration）**，编译时分析
+   - `import("./m")` → **函数表达式（Expression）**，运行时执行，返回 `Promise<Module>`
+
+2. **类比 Java**：`import java.util.List`（声明）vs `Class.forName("...")`（运行时反射）——两个机制，共享一个概念名。
+
+3. **编译产物对比**：
+   ```javascript
+   import { add } from "./math";       // → 保留或被打包器 inline
+   const lib = await import("./lib");  // → 保留为运行时函数调用
+   ```
+
+4. **在依赖图中的角色**：静态 import 参与依赖图 → 支持 Tree-shaking；动态 import 不参与依赖图 → 整个模块都会被保留。
+
+5. **认知**：`import()` 是 ESM 提供的**运行时逃生舱**——绝大多数场景用静态 import 获得编译优化，少数按需加载场景用 `import()` 兜底。
+
+---
+
+### Q3：`import type` 只是方便非 tsc 工具吗？有没有其他作用？
+
+**问题背景**：以为 `import type` 只为了兼容 esbuild/swc/Babel 等单文件转译器。
+
+**解答要点**：
+
+1. **对 `tsc`（完整编译器）**：加了 `type` 和不加，类型检查和擦除效果完全相同——`tsc` 有全局视角，知道哪个导入是类型。
+
+2. **对 esbuild/swc/Babel（单文件转译器）**：它们一次只处理一个文件，不跨文件分析类型。看到 `import { Weapon }` 时不知道 Weapon 是类型还是值 → **不敢删**，可能在输出 JS 中残留无效 import。看到 `import type { Weapon }` → 语法层面直接保证必定擦除。
+
+3. **其他实打实的好处**：
+   - **打断循环依赖**：`import type` 不产生运行时模块边，TS 构建依赖图时忽略它
+   - **减少增量编译 emit**：`tsc --watch` 下改了纯类型文件，`import type` 边不触发无关文件的 JS 重写
+   - **文档意图**：读代码的人一眼知道"这行运行时不存在"
+
+4. **一句话**：`import type` 不是补 TS 的检查能力（TS 本来就有），而是补非 tsc 构建工具的擦除能力 + 优化构建过程。
+
+---
+
+### Q4：模块拆分方案中，内部文件为什么不从 `index.ts` 导入？
+
+**问题背景**：练习二中 game.ts 直接从 types.ts 和 utils.ts 导入，而不是从 index.ts 统一导入——那 index.ts 的意义何在？
+
+**解答要点**：
+
+1. **index.ts 是给外部调用者用的门面**：
+   - 内部文件之间相互认识，走直接路径（`game.ts → types.ts`），路径最短、依赖最清晰
+   - 外部调用者只认识一个入口（`app.ts → src/index.ts`），不需要知道 src/ 下有几个文件
+
+2. **如果内部也从 index 导入会形成不必要的循环**：
+   - `game.ts → index.ts → game.ts`（index 里有 `export * from "./game"`）
+   - ESM 虽然能处理，但增加了无意义的复杂度
+
+3. **类比**：Java 里同一个 package 的类直接引用 `MyClass`，不需要通过 `package-info.java` 中转。index.ts 类似于对外发布的 API facade。
+
+---
+
+### Q5：模块拆分时，从 types.ts 导入接口为什么应该加 `type`？
+
+**问题背景**：练习二批改时指出 `import { Weapon, Armor } from "./types"` 应改为 `import type`。
+
+**解答要点**：
+
+1. **功能上不加也行**：`tsc` 能识别 Weapon/Armor 是 interface 并正确擦除。
+
+2. **加 `type` 的理由**：
+   - **意图明确**：读代码的人一眼知道这行只引入类型、不产生运行时依赖
+   - **单文件转译器安全**：esbuild/swc 看到 `import type` 从语法层面直接删，不用跨文件分析
+   - **防误用**：`import type` 后如果写了 `new Weapon()`，编译时就报错（不加 type 可能运行时才炸）
+
+3. **规范**：从纯类型文件导入纯类型时，用 `import type` 是最佳实践。
+
+---
+
+### 概念混淆点（模块化学习期间暴露）
+
+| 混淆点 | 现象 | 澄清 |
+|-------|------|------|
+| `import` 声明 = `import()` 表达式 | 以为动态 import 是静态 import 的特殊写法 | 声明 vs 函数调用，名字相同本质不同 |
+| `export *` 会转发默认导出 | 练习中认为能通过 `export *` 拿到默认导出 | `export *` 只转发命名导出；默认导出需 `export { default as X } from` |
+| `import type` 只为了兼容单文件转译器 | 以为 tsc 不需要它 | 还有打断循环依赖、减少增量编译 emit、文档意图三个作用 |
+| CJS 加载时机 | 不理解"运行时同步加载"和"编译时静态分析"的区别 | CJS 是边跑边加载（阻塞），ESM 是先画依赖图再按序执行 |
+
+### 练习易错模式（模块化）
+
+**根因**：从 Java 转到 TS 时，习惯 Java 的 `public` 默认可见 + 文件系统即模块 → 不适应 TS "不写 export 就私有"的默认行为。
+
+| 易错模式 | 具体表现 | 正确做法 |
+|---------|---------|---------|
+| 忘记写 `export` | 接口、函数、类声明前漏 `export`，外部无法导入 | TS 默认私有，每个对外成员必须显式 `export` |
+| 有逻辑的类放在 types.ts | Sword/Shield 放入 types.ts（题目只要求纯类型） | types.ts 只放 interface/type；类放业务文件 |
+| 默认导出用 `{ }` 导入 | `import { UserService }` 导入默认导出 | 默认导出不加括号：`import UserService` |
+| `export *` 路径语法错误 | `export * ./path` 缺 `from` 关键字 | `export * from "./path"` |
+| Cocos 组件忘 export | `class PlayerController` 缺 export | `export class PlayerController`，否则引擎找不到 |
+
+---
+
+*文档创建时间：2026-06-08*
+*首次关联章节：第三节：接口（Interface）*
+
+*文档更新时间：2026-06-12*
