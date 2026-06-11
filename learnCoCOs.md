@@ -32,18 +32,18 @@
 
 ### 阶段1：TypeScript 语言基础
 
-| 知识点 | 具体内容 | 掌握程度 |
-|-------|---------|---------|
-| 变量与数据类型 | string, number, boolean, array, tuple, enum | 熟练使用 |
-| 函数 | 参数类型注解、返回值类型、箭头函数 | 熟练编写 |
-| 类与对象 | class、constructor、属性、方法、继承、访问修饰符 | 熟练使用 |
-| 类型断言与收窄 | `as` 断言、`instanceof`/`typeof` 收窄、非空断言 `!` | 熟练使用 |
-| 接口(Interface) | 定义对象结构、可选属性、只读属性、函数类型接口、`implements` | 能定义和使用 |
-| Utility Types | `Partial<T>`, `Pick<T>`, `Omit<T>`, `Record<K,V>`, `ReturnType<T>`, `satisfies` | 了解并能使用 |
-| 泛型(Generic) | 基础泛型语法、泛型约束 | 了解并能阅读 |
-| 异步编程 | Promise、async/await、回调函数 | 能处理异步加载 |
-| 模块化 | import/export | 能组织代码文件 |
-| 声明文件 | `.d.ts` 基本概念、阅读 Cocos 引擎类型定义 | 了解并能阅读 |
+| 知识点 | 具体内容 | 掌握程度 | 前置依赖 |
+|-------|---------|---------|---------|
+| ① 变量与数据类型 | string, number, boolean, array, tuple, enum | 熟练使用 | 无 |
+| ② 函数 | 参数类型注解、返回值类型、箭头函数 | 熟练编写 | ① |
+| ③ 类与对象 | class、constructor、属性、方法、继承、访问修饰符 | 熟练使用 | ①② |
+| ④ 接口(Interface) | 定义对象结构、可选属性、只读属性、函数类型接口、`implements` | 能定义和使用 | ①②③ |
+| ⑤ 类型断言与收窄 | `as` 断言、`instanceof`/`typeof` 收窄、非空断言 `!` | 熟练使用 | ①②③④ |
+| ⑥ 泛型(Generic) | 基础泛型语法、泛型约束 | 了解并能阅读 | ①②③④ |
+| ⑦ 模块化 | import/export | 能组织代码文件 | ①②③ |
+| ⑧ Utility Types | `Partial<T>`, `Pick<T>`, `Omit<T>`, `Record<K,V>`, `ReturnType<T>`, `satisfies` | 了解并能使用 | ⑥（依赖泛型基础） |
+| ⑨ 异步编程 | Promise、async/await、回调函数 | 能处理异步加载 | ①② |
+| ⑩ 声明文件 | `.d.ts` 基本概念、阅读 Cocos 引擎类型定义 | 了解并能阅读 | ④⑥⑧ |
 
 **验收标准：**
 - [ ] 能独立编写一个简单的类（如 Player）
