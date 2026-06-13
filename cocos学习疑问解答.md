@@ -522,7 +522,7 @@
    // 只返回 boolean——调用方收窄不了
    function isPlayer(obj: unknown): boolean { return "name" in obj; }
    if (isPlayer(data)) { data.name; } // ❌ data 仍是 unknown
-
+   
    // 类型谓词——调用方获得收窄
    function isPlayer(obj: unknown): obj is Player { return "name" in obj; }
    if (isPlayer(data)) { data.name; } // ✅ data 收窄为 Player
@@ -595,7 +595,7 @@
    function wrapAny(v: any): any { return { data: v }; }
    const r1 = wrapAny("hello");
    r1.data.toFixed(); // ✅ 编译通过，运行时崩溃——TS 不知道 data 是 string
-
+   
    // 泛型：类型信息完整穿过
    function wrap<T>(v: T): { data: T } { return { data: v }; }
    const r2 = wrap("hello");
@@ -800,7 +800,44 @@
 
 ---
 
+## 第六节：Utility Types
+
+### Q1：Record<K, V> 编译成 JS 是什么样的？JS 没有 Map 类型吧？
+
+**答**：`Record<K, V>` 是纯类型，编译后**完全消失**。JS 对象天生就是键值对，`Record` 只是在编译时约束键和值的类型，不产生任何运行时代码。`Record<string, number>` 编译后就是普通 JS 对象 `{ Alice: 100, Bob: 200 }`。
+
+若需要运行时的数据结构（`.get()`、`.set()`、`.has()` 方法），用 JS 原生的 `Map<K, V>` 类——这和 `Record` 是两回事：`Record` 是**类型**（编译后消失），`Map` 是**类**（运行时存在）。
+
+### Q2：ReturnType 提取后的类型长什么样？会保留 key 名吗？
+
+**答**：会保留 key 名。`ReturnType<typeof createGameState>` 提取出的是完整的对象结构类型 `{ score: number; level: number; paused: boolean }`。key 名保留，value 被推断为基础类型。
+
+### Q3：`as const` 不会让 priority 的 key 名消失吗？只保留值？
+
+**答**：`as const` 只影响**值的类型**，不影响 key 名。`{ priority: "low" as const }` 中，key 名 `priority` 完好无损，变的是 priority 的**值类型**从 `string` 收窄为字面量 `"low"`。
+
+---
+
+### 概念混淆点
+
+| 混淆点 | 现象 | 根因 |
+|--------|------|------|
+| `\|`（联合）误当 `&`（交叉）用 | `Pick<T, 'a'> \| Partial<Pick<T, 'b'>>` 试图组合字段，实际变成"二选一" | `A \| B` = 满足 A **或** B；`A & B` = 满足 A **且** B。组合 Utility Types 需用 `&` |
+| `Omit` 键名写错不报错 | `Omit<UserData, "pass">` 静默通过，password 未被排除 | `Omit` 的 `K extends keyof any` 过于宽松（`keyof any` = `string \| number \| symbol`），不校验键名是否真实存在 |
+
+### 练习易错模式
+
+| 易错模式 | 表现 | 纠正 |
+|----------|------|------|
+| `Pick<T, "key1" \| "nokey">` 包含不存在的键 | 编译报错 | `Pick` 的 K 必须 `extends keyof T`，写错立即报错——这是 `Pick` 比 `Omit` 更安全的地方 |
+| `ReturnType<fn>` 忘记 `typeof` | `ReturnType<createGameState>` 编译报错 | `ReturnType` 参数是**类型**，值是 `typeof createGameState` |
+| `satisfies` 用在参数类型位置 | `(p: Player satisfies X)` 语法错误 | `satisfies` 只能用于变量声明右侧 |
+| 工厂函数返回 `Partial<T>` | 返回全字段却标 `Partial`，调用方被迫判空 | 工厂返回完整对象应标 `Required<T>` |
+| 判别联合与 `typeof` 收窄混淆 | 把运行时 `typeof x === "string"` 归为判别联合 | 判别联合依赖**字面量类型字段**（如 `status: "error"`），`typeof` 是独立的收窄方式 |
+
+---
+
 *文档创建时间：2026-06-08*
 *首次关联章节：第三节：接口（Interface）*
 
-*文档更新时间：2026-06-12*
+*文档更新时间：2026-06-14*

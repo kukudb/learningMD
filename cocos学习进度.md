@@ -53,9 +53,9 @@
 ## 二、学习进度跟踪
 
 ### 总体状态
-- **当前阶段**：TypeScript 基础 → **第五节（模块化）已完成，待进入第六节（Utility Types）**
-- **下一目标**：第六节：Utility Types → 第七节：异步编程 → 第八节：声明文件 → 验收 TypeScript 基础
-- **已完成日期**：2026-06-08（接口基础定义 + 深入理解 TS 编译原理）、2026-06-09（剩余知识点 + 综合练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）
+- **当前阶段**：TypeScript 基础 → **第六节（Utility Types）已完成，待进入第七节（异步编程）**
+- **下一目标**：第七节：异步编程 → 第八节：声明文件 → 验收 TypeScript 基础
+- **已完成日期**：2026-06-08（接口基础定义 + 深入理解 TS 编译原理）、2026-06-09（剩余知识点 + 综合练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）、2026-06-14（Utility Types）
 
 ---
 
@@ -214,12 +214,40 @@
 
 **产生的疑问**：见 `cocos学习疑问解答.md` → 第五节：模块化（import/export）
 
+#### 第六节：Utility Types ✅
+**完成时间**：2026-06-14  
+**掌握程度**：理解到位，练习暴露 `|`（联合）vs `&`（交叉）混淆（概念已纠正）
+
+**已学习**
+- [x] `Partial<T>` — 所有属性变为可选（更新操作的参数）
+- [x] `Required<T>` — 所有属性变为必填（工厂函数返回值）
+- [x] `Pick<T, K>` — 挑选部分属性（K 必须为 T 的合法键名）
+- [x] `Omit<T, K>` — 排除部分属性（K 约束极宽松，写错键名不报错——静默陷阱）
+- [x] `Record<K, V>` — 构造键值映射类型（编译后就是普通 JS 对象）
+- [x] `ReturnType<T>` — 提取函数返回值类型（T 必须为类型，需 `typeof` 取值类型）
+- [x] `satisfies` 操作符 — 检查类型兼容性但不改变推断类型
+- [x] `: Type` 注解 vs `satisfies` vs `as` 断言的三方辨析
+- [x] 组合使用 Utility Types（`&` 交叉类型拼接，非 `|` 联合）
+- [x] `as const` 保留字面量类型，防止放宽为 `string`
+- [x] Utility Types 与 Java 的对比（编译时零成本 vs 手写 DTO/MapStruct）
+
+**实际完成的练习代码**
+- `test.ts`：5 处代码诊断（Pick 键名错误、ReturnType 缺 typeof、satisfies 位置错误、Partial vs Required 混淆、Omit 静默陷阱）
+- 任务管理系统类型设计（6 个需求，含 Pick+Partial 交叉组合、Omit+Partial 组合、Record、satisfies、ReturnType+Required）
+- 对比表格（`: Type` / `satisfies` / `as` / `typeof` 收窄 / 判别联合的场景选择）
+
+**产生的疑问**：见 `cocos学习疑问解答.md` → 第六节：Utility Types
+
+**概念混淆点**：
+- `|`（联合，满足其一）vs `&`（交叉，同时满足）——练习中将组合 Utility Types 的 `&` 误写为 `|`
+- `Omit` 对非法键名不报错（`K extends keyof any` 过于宽松），与 `Pick` 的严格约束形成对比
+
 ---
 
 ### 未开始的学习内容
 
 #### 第五节：模块化（import/export）✅
-#### 第六节：Utility Types（Partial, Pick, Omit, Record, ReturnType, satisfies）
+#### 第六节：Utility Types（Partial, Pick, Omit, Record, ReturnType, satisfies）✅
 #### 第七节：异步编程（Promise, async/await）
 #### 第八节：声明文件（.d.ts）
 
@@ -261,8 +289,15 @@
 - [x] 静态 `import` 声明 vs 动态 `import()` 表达式
 - [x] ESM 活绑定与编译时静态分析
 - [x] ESM vs CJS 核心差异
+- [x] `Partial<T>` / `Required<T>` 定义与使用场景
+- [x] `Pick<T, K>` / `Omit<T, K>` 定义与使用场景（含 Omit 静默陷阱认知）
+- [x] `Record<K, V>` 构造键值映射（编译后即普通 JS 对象）
+- [x] `ReturnType<T>` 提取函数返回值类型（需 `typeof`）
+- [x] `satisfies` 操作符（检查 + 保留推断类型）
+- [x] `: Type` vs `satisfies` vs `as` 三方辨析
+- [x] 组合使用 Utility Types（`&` 交叉类型拼接）
 
-**尚未掌握**：Utility Types、异步编程、声明文件
+**尚未掌握**：异步编程、声明文件
 
 ---
 
@@ -272,11 +307,11 @@
 2. ~~补齐类型断言与收窄~~ ✅ 已完成（2026-06-10）
 3. ~~第四节：泛型（Generic）~~ ✅ 已完成（2026-06-11）
 4. ~~第五节：模块化（import/export）~~ ✅ 已完成（2026-06-12）
-5. 进入**第六节：Utility Types**——Partial, Pick, Omit, Record, ReturnType, satisfies
-6. 第七节：异步编程（Promise, async/await）
+5. ~~第六节：Utility Types~~ ✅ 已完成（2026-06-14）
+6. 进入**第七节：异步编程**——Promise, async/await, 回调函数
 7. 第八节：声明文件（.d.ts 基本概念）
 8. 验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）
 
 ---
 
-*文档更新时间：2026-06-12（第五节模块化完成，深度讨论 import type / import() 机制）*
+*文档更新时间：2026-06-14（第六节 Utility Types 完成，含 `|` vs `&` 概念纠正及 Omit 静默陷阱）*
