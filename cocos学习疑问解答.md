@@ -940,3 +940,17 @@
 | 异步 = 并发执行 | 以为 Promise 回调在另一个线程上跑 | JS 代码永远是单线程顺序执行；异步只是时间解耦 |
 | 换了线程定时就能准时 | 依次追问 Worker/rAF/渲染线程能否准时 | 只要回调回主线程就必须排队，与在哪定时无关 |
 | `setTimeout` delay = 精确延迟 | 以为 2000ms 后准时执行 | delay 是"至少"保证，实际 = max(delay, 同步代码耗时 + 排队耗时) |
+
+---
+
+### 自总结要点
+
+#### S1：`.then()` 回调链的执行顺序是如何保证的？
+
+**对应隐式疑问**：多个 `.then()` 串在一起，后面的回调如何能确定拿到前面回调的返回值？顺序是怎样强制执行的？
+
+**学习者自总结机制描述**：
+
+> 回调注册的是内部 `_onFulfilled` 方法（而非直接注册用户传入的 `onFulfilled`）。微任务执行时，调用的是 `_onFulfilled`——它在内部执行用户传入的 `onFulfilled`，并根据其返回值决定下一级 Promise 的状态（正常返回 → `resolve(新值)`，抛异常 → `reject(err)`）。每一个 `.then()` 都创建了一个全新的 Promise 对象，持有全新的私有 `resolve`/`reject`。数据沿链传递的本质是：上一级 Promise 的 `_onFulfilled` resolve 下一级 Promise，下一级的 `_onFulfilled` 再 resolve 更下一级——形成了一条单向的 resolve 链。这就是 `.then()` 回调执行顺序的保证机制：不是通过队列排队回调，而是通过**每个 Promise 等待上一个 Promise 完成**来串行化。
+
+**核心概念标签**：`_onFulfilled 包装` · `链式 resolve` · `每级独立的 Promise` · `数据串行传递`
