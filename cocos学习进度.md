@@ -259,8 +259,8 @@
 
 #### 第七节：异步编程（Promise, async/await）🔄 进行中
 
-**完成时间**：第一小节已完成（2026-06-14），剩余部分待继续
-**掌握程度**：事件循环机制理解深入，尚未进入编码练习
+**完成时间**：第一小节已完成（2026-06-14），第二小节教学已完成、练习待做（2026-06-15）
+**掌握程度**：事件循环机制理解深入；Promise 构造与链式调用机制理解到位（含 `.then()` 内部包装、`.catch()`/`.finally()` 差异、自动展开机制）；编码练习待进行
 
 **第一小节：事件循环与异步底层机制** ✅
 - [x] JS 单线程模型 vs Java 多线程（事件循环 + Web API/libuv 线程池）
@@ -283,12 +283,26 @@
 - [x] await "暂停"的真相：函数交出控制权（栈帧弹出），剩余代码包进 .then() 回调
 - [x] await ≠ Java Future.get()：前者不阻塞线程，后者阻塞线程
 
-**第二小节：Promise 编码实战 & async/await 练习** ⏳ 待进行
-- [ ] Promise 构造与链式调用编码练习
+**第二小节：Promise 构造与链式调用** 🔄 教学完成，练习待做
+- [x] Promise 三种状态（pending/fulfilled/rejected）与状态凝固
+- [x] `new Promise(executor)`——executor 同步执行，resolve/reject 只改状态传数据
+- [x] `.then()` 注册回调，返回新 Promise，形成链式调用
+- [x] `.then()` 内部机制：`_onFulfilled` 包装 → 执行用户回调 → 根据返回值 resolve/reject 下一级
+- [x] 每个 `.then()` 创建全新 Promise，持有私有 resolve/reject（非沿用上一个 resolve）
+- [x] `.then()` 自动展开：回调返回 Promise 时，自动加一层 `.then()` 把状态桥接过去
+- [x] `.catch()` 本质 = `.then(undefined, onRejected)`，成功处理后恢复链为 fulfilled
+- [x] `.finally()` 不接收参数、不改变状态、不透传自己的返回值（旁观式清理）
+- [x] `response.json()` 在链中的角色：异步中转站（后台线程解析，Promise 返回，自动展开）
+- [x] Promise 与网络请求的配合：executor 启动请求，`.then()` 善后处理
+- [x] 链式调用数据流：上一级 `_onFulfilled` → resolve 下一级 → 值沿链串行传递
+- [ ] Promise 构造与链式调用编码练习（4 题已出，待做）
 - [ ] async/await 编码练习
 - [ ] 代码诊断练习
 
-**产生的疑问**：见 `cocos学习疑问解答.md` → 第七节：异步编程
+**产生的疑问**：见 `cocos学习疑问解答.md` → 第七节：异步编程（含 Q6~Q10 及自总结 S1）
+
+**自总结要点**：S1——`.then()` 回调链执行顺序保证机制（`_onFulfilled` 包装 + 链式 resolve + 每级独立 Promise）
+**概念混淆点**：Promise=标志位 / Promise 本身变微任务 / `.then()` 调用会重入 / 链中共用 resolve / `.finally()` 返回值影响链
 
 ---
 
@@ -364,4 +378,4 @@
 
 ---
 
-*文档更新时间：2026-06-15（规则6新增「学习者自总结归档」——将自行消解的隐式疑问保留入库，避免"没提问即无困惑"的遗漏）*
+*文档更新时间：2026-06-15（第七节第二小节Promise构造与链式调用教学完成；归档Q6~Q10及自总结S1；练习4题已出待做）*

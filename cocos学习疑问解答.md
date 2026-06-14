@@ -954,3 +954,100 @@
 > 回调注册的是内部 `_onFulfilled` 方法（而非直接注册用户传入的 `onFulfilled`）。微任务执行时，调用的是 `_onFulfilled`——它在内部执行用户传入的 `onFulfilled`，并根据其返回值决定下一级 Promise 的状态（正常返回 → `resolve(新值)`，抛异常 → `reject(err)`）。每一个 `.then()` 都创建了一个全新的 Promise 对象，持有全新的私有 `resolve`/`reject`。数据沿链传递的本质是：上一级 Promise 的 `_onFulfilled` resolve 下一级 Promise，下一级的 `_onFulfilled` 再 resolve 更下一级——形成了一条单向的 resolve 链。这就是 `.then()` 回调执行顺序的保证机制：不是通过队列排队回调，而是通过**每个 Promise 等待上一个 Promise 完成**来串行化。
 
 **核心概念标签**：`_onFulfilled 包装` · `链式 resolve` · `每级独立的 Promise` · `数据串行传递`
+
+---
+
+## 第七节续：Promise 构造与链式调用
+
+### Q6：Promise 类型和普通类型有什么区别？为什么必须用 `.then()` 取值？
+
+**原始提问思路**：以为 Promise 只是给普通类型打了个"可异步"的标志位，不理解为什么要绕一圈通过 `.then()` 才能拿到值。
+
+**解答要点**：
+
+1. **Promise 不是标志位，是一层容器**：`Promise<string>` 和 `string` 不在一个层面——前者包着后者。`string` 现在就有值，`Promise<string>` 未来才有。类比 Java 的 `CompletableFuture<String>`。
+2. **为什么必须 `.then()`？** JS 是单线程，不能像 Java 一样 `Future.get()` 阻塞等结果——那样会卡死整个主线程（死锁：你在等结果，但产生结果的操作也在主线程上）。唯一可行的方案是 Push 模型：提前告诉 Promise"你好了就打这个电话（回调）"。
+3. **`.then()` 就是 Promise/A+ 标准定义的"USB 接口"**——任何有 `.then()` 方法的对象都叫 thenable，`await` 和 `Promise.resolve()` 都认它。这不是 Promise 特有的装饰品，而是它的核心标识。
+4. **验证：即使 Promise 已经 fulfilled，`.then()` 回调仍然是异步的**（`Promise.resolve("v").then(console.log)` 在同步代码之后输出）。
+
+> **关键区分**：`new Promise(executor)` 中的 executor **同步执行**——它不是异步的。异步的部分是 `.then()` 里的**回调**。Promise 对象本身是同步创建的一个普通对象，只不过它内部记录着"未来会有值"这一承诺。
+
+---
+
+### Q7：resolve/reject 只负责改状态和传数据吗？跟注册回调无关？
+
+**原始提问思路**：把 resolve/reject 和回调注册混为一谈，以为它们之间有直接调用关系。
+
+**解答要点**：
+
+1. **resolve/reject 只做两件事**：① 把内部状态从 `pending` 改为 `fulfilled`/`rejected` ② 把 value/reason 存起来。**不注册任何回调，不直接调用任何回调**。
+2. **分工**：`.then(cb)` 负责"登记"（把 cb 存入待调用列表）；`resolve(value)` 负责"通知"（遍历已登记的列表，把 cb 排入微任务队列）；事件循环负责"执行"（从微任务队列取 cb 执行）。
+3. **如果 resolve 时还没有 `.then()` 注册？** 值被存起来，后续注册的 `.then()` 立刻把回调排入微任务（Promise 已 fulfilled，不需要再等）。
+4. **`.catch()` 同理**——它就是 `.then(undefined, onRejected)` 的语法糖，也是注册 rejected 路径的回调。
+
+---
+
+### Q8：`.catch()` 和 `.finally()` 的内部机制与 `.then()` 有何不同？
+
+**原始提问思路**：以为 `.catch()` 和 `.finally()` 有独立的运行机制。
+
+**解答要点**：
+
+| | `.then(onFulfilled)` | `.catch(onRejected)` | `.finally(onFinally)` |
+|---|---|---|---|
+| 本质 | 注册 fulfilled 回调 | `.then(undefined, onRejected)` | 独立方法 |
+| 回调参数 | 接收 value | 接收 reason | **不接收任何参数** |
+| 回调返回值影响链？ | 是——成为下一级的值 | 是——正常返回可恢复链为 fulfilled | **否——返回值被忽略** |
+| 改变链的状态？ | 能（正常→fulfilled，抛异常→rejected） | 能（正常→fulfilled，抛异常→rejected） | **不能——原样透传上级状态** |
+| 触发条件 | 上级 fulfilled | 上级 rejected | 上级 settled（不论成败） |
+| 创建新 Promise？ | 是 | 是 | 是 |
+
+**`.catch()` 的关键能力**：把 rejected 的链"抢救"回 fulfilled——正常返回即可恢复。
+**`.finally()` 的关键限制**：纯旁观式清理，不改变数据、不改变状态。
+
+---
+
+### Q9：网络请求是如何运用 Promise 的？`response.json()` 在链中是什么角色？
+
+**原始提问思路**：不清楚"等待请求结果"应该放在 executor 还是 `.then()` 里；看到 `response.json()` 也返回 Promise，不理解它如何在链中参与数据传递。
+
+**解答要点**：
+
+1. **等待不在 JS 主线程，更不在 `.then()` 里**——等待发生在这几个地方：
+   - 网络响应等待 → 浏览器网络线程
+   - JSON 解析等待 → 浏览器后台线程
+   - 定时器等待 → 系统 Timer
+   这些底层线程完成后调 `resolve()`，把结果"送进"Promise 链。
+2. **职责划分**：executor = "启动异步源"（发请求），`.then()` = "善后"（拿数据后干什么）。
+3. **`response.json()` 的角色：异步中转站**——它接收 Response 对象，产出解析后的 JS 对象。之所以返回 Promise，是因为 JSON 解析可能很耗时（10MB 数据），解析过程放后台线程，避免卡主线程。
+4. **`response.json()` 如何参与链**：作为 `.then()` 回调的返回值（是一个 Promise），触发 `.then()` 的自动展开机制 → 下一级 `.then()` 直接拿到解析后的 JS 对象，而不是 `Promise<JS对象>`。
+5. **感知 JSON 解析完成的方式**：下一级 `.then()` 回调被执行的那一刻 = 解析完成。
+
+---
+
+### Q10：`.then()` 的自动展开（自动加一层 `.then()`）是怎么回事？
+
+**原始提问思路**：追问到最底层——多加的那一层 `.then()` 是谁 resolve 它的？
+
+**解答要点**：
+
+1. **自动展开的定义**：当 `.then()` 的回调返回一个 Promise 时，`.then()` 不会直接 `resolve(这个Promise对象)`，而是调用 `返回的Promise.then(下一级resolve, 下一级reject)`——把下一级 Promise 的 resolve/reject "挂"到这个返回的 Promise 上。
+2. **谁 resolve 了这个"多加的 `.then()`"？** 不是 `.then()` 自己——是**回调返回的那个 Promise 自己的 resolve**。当 `response.json()` 内部调用 `resolve_json(解析结果)` 时，挂在上面的 `下一级resolve` 被触发，值就传过去了。
+3. **完整链**：
+   ```
+   fetch 的 resolve_res → response.json() → p_json 的 resolve_json → 触发 "挂在上面的下一级resolve" → 下一级 Promise fulfilled
+   ```
+   每一环都是一个独立的 Promise 持有自己的 resolve，数据就是这样沿着 resolve 链传下去的。
+4. **这个过程叫 Promise 吸收（assimilation）**——永远不出现 `Promise<Promise<T>>`，`.then()` 自动扒平。
+
+---
+
+### 概念混淆点（Promise 链式调用学习期间暴露）
+
+| 混淆点 | 现象 | 澄清 |
+|--------|------|------|
+| Promise = 异步标志位 | 以为 `Promise<string>` 就是给 `string` 加个 async 标记 | Promise 是"未来值容器"，不是标志位；不打开（`.then()`/`await`）拿不到值 |
+| Promise 本身变成微任务 | 以为 `new Promise()` 创建的对象会变成微任务 | Promise 对象是同步创建的普通对象；变成微任务的是 `.then()` 里注册的**回调** |
+| `.then()` 调用会"重入" | 以为异步完成后代码会回到 `.then()` 调用行 | `.then()` 调用在同步阶段就执行完了；后来执行的是当时注册的**回调函数体** |
+| 链中所有 `.then()` 共用 resolve | 以为继续 `.then()` 是沿用上一个 resolve | 每个 `.then()` 内部 `new Promise` 创建了**全新的私有 resolve/reject** |
+| `.finally()` 返回值影响链 | 以为 `.finally()` 可以返回默认值 | `.finally()` 的回调没有参数，返回值被忽略，状态和数据原样透传 |
