@@ -1081,6 +1081,18 @@
 
 **原始提问思路**：练习 2 中 `deductBalance` 返回 `{ success, remaining }`，不包含 `price`——如何把 `verifyStock` 返回的 `price` 传给 `createOrder`？尝试用 `let price` 外部变量，被指出设计不优后追问原因。后续追问中暴露了"方法结束后变量就丢失"的 Java 栈思维。
 
+**📋 练习上下文**（本问答涉及的关键 API 签名）：
+```typescript
+// 三个已提供的函数，不可修改其签名
+function verifyStock(itemId: number): Promise<{ available: boolean; price: number }>
+function deductBalance(userId: number, amount: number): Promise<{ success: boolean; remaining: number }>
+function createOrder(userId: number, itemId: number, price: number): Promise<string>
+
+// 需求：依次调用以上三个函数，price 从 verifyStock 获取，最终返回订单号
+// 难点：deductBalance 的返回值 { success, remaining } 不包含 price，
+//       到了 createOrder 那一步，price 已经丢失了
+```
+
 **解答要点**：
 
 1. **`let` 外部变量方案能工作，但不推荐**：
@@ -1123,6 +1135,8 @@
 | 跨步骤数据丢失 | 用 `balance.remaining`（余额）传给 `createOrder` 的 `price` 参数 | 闭包嵌套：在内层 `.then()` 中引用外层 `stock.price` |
 | 链尾缺 `.catch()` | reject 路径无处理，未捕获的拒绝 | 链尾加 `.catch()` 兜底，或让调用方处理 |
 
+> 💡 「跨步骤数据丢失」条目涉及的具体 API 签名见 Q12 的「📋 练习上下文」。
+
 ---
 
 ### 自总结要点
@@ -1139,4 +1153,4 @@
 
 ---
 
-*文档更新时间：2026-06-19（新增Promise编码练习 Q11~Q12、概念混淆点、练习易错模式、自总结S2）*
+*文档更新时间：2026-06-19（规则8新增「练习代码上下文保留」；Q12回溯补充📋练习上下文代码块；练习易错表补Q12引用）*
