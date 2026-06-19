@@ -1154,3 +1154,121 @@ function createOrder(userId: number, itemId: number, price: number): Promise<str
 ---
 
 *文档更新时间：2026-06-19（规则8新增「练习代码上下文保留」；Q12回溯补充📋练习上下文代码块；练习易错表补Q12引用）*
+
+---
+
+## 第七节续二：async/await 编码实践
+
+### 问答记录
+
+#### Q11：`Promise.resolve()` 静态方法 vs executor 的 `resolve` 参数 —— 同名不同身份
+
+**提问者视角**：async 函数说"会把返回值包成 `Promise.resolve()`"——resolve() 不是用来设置 Promise 状态的吗？为什么 async 会去调用另一个 Promise 的 resolve？
+
+**概念混淆点**：看到 `resolve` 就以为是 executor 参数里的那个回调函数，实际上 JS 中有两个 `resolve`，长得像但不是同一个东西。
+
+**核心解释**：
+
+| | `new Promise((resolve) => resolve(42))` | `Promise.resolve(42)` |
+|---|---|---|
+| 是什么 | 构造器——创建"悬而未决"的 Promise | 静态工厂——创建"已经完成"的 Promise |
+| resolve 身份 | executor 的参数，一个回调函数 | Promise 类上的静态方法 |
+| 谁调用 | 你的代码手动调 | 引擎内部自动完成 |
+| 用途 | 包装回调式异步操作 | 把普通值包装成 Promise |
+
+async 函数 `return 42` 等价于 `return Promise.resolve(42)`——调用的是静态方法，不是去调用某个 executor 的 resolve。
+
+---
+
+#### Q12：Promise.all fail-fast 策略与 allSettled
+
+**提问者视角**：`Promise.all([A, B])` 中 A reject 了，B 会继续执行吗？如果两个都 reject，catch 到哪个？
+
+**概念混淆点**：以为 Promise.all 会取消未完成的 Promise，或会收集所有错误。
+
+**核心解释**：
+
+1. **一个 reject，另一个继续执行但不被关心**——Promise 一旦创建就无法取消，Promise.all 只是"观察者"，不是"控制器"
+2. **两个都 reject，只拿到第一个**——Promise.all 采用 fail-fast 策略，第一个 reject 立即传播，其余错误静默丢失
+3. **想拿全部结果用 `Promise.allSettled`**——返回 `{ status: "fulfilled", value: T } | { status: "rejected", reason: unknown }`
+
+---
+
+#### Q13：IIFE（Immediately Invoked Function Expression）
+
+**提问者视角**：`(async () => { ... })()` 是什么语法？为什么要这样写？
+
+**概念混淆点**：不了解 IIFE 这种"创建函数+立即调用"的模式。
+
+**核心解释**：IIFE = 立即调用的函数表达式。`(async () => { ... })()` 的作用是在不能加 async 的函数（如 Cocos 生命周期方法 `onLoad()/start()`）内部创建一个 async 作用域，从而可以使用 await。外层 `()` 是语法必须（否则 JS 解析器混淆函数声明和表达式）。
+
+---
+
+#### Q14：fire-and-forget 模式
+
+**提问者视角**：`logEvent(...)` 不加 await 不会出问题吗？
+
+**概念混淆点**：以为所有返回 Promise 的调用都必须 await。
+
+**核心解释**：fire-and-forget = 发射后不管。当一个异步调用的**返回值不被后续逻辑依赖**时（如打日志、上报统计），可以不 await，让它自己跑完。判断标准：后续代码是否依赖这次调用的返回值。
+
+---
+
+### 📋 练习上下文（追加练习 A）
+
+```typescript
+declare function saveGame(data: object): Promise<string>;
+declare function syncToCloud(saveId: string): Promise<void>;
+declare function logEvent(msg: string): Promise<void>;
+declare function updateUI(text: string): void;
+```
+
+题型：判断每行是否需要 await 并说明原因。
+
+### 📋 练习上下文（追加练习 B）
+
+```typescript
+declare function fetchInventory(): Promise<{ itemId: number; stock: number }[]>;
+declare function fetchPrice(itemId: number): Promise<number>;
+declare function fetchBudget(): Promise<number>;
+declare function placeOrder(itemId: number, qty: number): Promise<{ orderId: string }>;
+```
+
+题型：依赖分析 + 并发实现进货流程（库存、预算并发 → 查价 → 下单）。
+
+---
+
+### 概念混淆点
+
+| 混淆点 | 现象 | 澄清 |
+|--------|------|------|
+| `Promise.resolve()` vs executor `resolve` | 看到 resolve 就以为是指 executor 参数 | 静态工厂方法 vs 构造器参数，同名不同身份 |
+| `[a,b]` 在不同位置的含义 | 以为 `=` 左边也是创建数组 | `=` 右边：创建数组（装箱）；`=` 左边：解构赋值（拆箱） |
+| `joinRoom` 返回 `playerCount` 而非 `roomId` | 以为 B 步骤返回了 roomId，导致依赖分析偏差 | 读 API 签名不能靠猜——返回类型写在声明里 |
+| Promise 可以取消 | 以为 Promise.all 可以停下已启动的 Promise | JS 原生 Promise 无取消机制，Promise.all 只是旁观者 |
+
+### 练习易错模式
+
+| 错误模式 | 出现频率 | 根因 |
+|----------|---------|------|
+| 忘记 await | 3 次（练习 1②、练习 2 coins、早期练习） | 变量类型标注意识不足——写 `const coins = fetchDailyBonus()` 时不自觉期望 coins 是 `number`，但 TS 不会在这里报错 |
+| 并发识别遗漏 | 3 次（练习 1、2、3 均未用 Promise.all） | 没有做依赖分析的习惯——应问"这个调用的参数是否来自上一个调用的返回值" |
+| IIFE 忘记 async 关键字 | 1 次（练习 3） | 只记住了 `(()=>{})()` 的括号结构，忘了目的是创建 async 作用域 |
+
+### 自总结要点
+
+#### S3：Promise.all 与 allSettled 的选择法则
+
+**学习者自总结机制描述**：
+
+> 并发启动多个 Promise 时——如果必须全部成功才继续（一个失败整个流程失败），用 `Promise.all`；如果每个 Promise 有自己的容错意义、需要逐个检查成功/失败状态，用 `Promise.allSettled`。Promise.all 是 fail-fast，第一个 reject 立即传播，其余错误静默丢失。
+
+**核心概念标签**：`Promise.all` · `Promise.allSettled` · `fail-fast` · `错误收集`
+
+#### S4：依赖分析法 —— 并发的判断标准
+
+**学习者自总结机制描述**：
+
+> 两个异步调用能否并发，看第二个调用的参数是否来自第一个调用的返回值。如果参数互不依赖 → Promise.all 并发；如果一个需要另一个的返回值 → 必须串行 await。判断时要精读 API 签名——不能凭变量名猜测返回内容（如 `joinRoom` 返回 `playerCount` 而不是 `roomId`）。
+
+**核心概念标签**：`依赖分析` · `Promise.all` · `串行 vs 并发` · `API 签名阅读`

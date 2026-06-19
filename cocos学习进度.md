@@ -104,9 +104,9 @@
 ## 二、学习进度跟踪
 
 ### 总体状态
-- **当前阶段**：TypeScript 基础 → **第七节（异步编程）进行中**
-- **下一目标**：第七节剩余内容（Promise/async-await 编码练习） → 第八节：声明文件 → 验收 TypeScript 基础
-- **已完成日期**：2026-06-08（接口基础定义 + 深入理解 TS 编译原理）、2026-06-09（剩余知识点 + 综合练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）、2026-06-14（Utility Types + 异步编程事件循环深入探讨）
+- **当前阶段**：TypeScript 基础 → **第七节（异步编程）已完成** → 第八节待开始
+- **下一目标**：第八节：声明文件（.d.ts） → 验收 TypeScript 基础 → 阶段2（Cocos Creator 编辑器）
+- **已完成日期**：2026-06-08（接口 + TS 编译原理）、2026-06-09（接口剩余+练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）、2026-06-14（Utility Types + 事件循环）、2026-06-20（async/await 编码实践，第七节完结）
 
 ---
 
@@ -295,10 +295,10 @@
 
 ---
 
-#### 第七节：异步编程（Promise, async/await）🔄 进行中
+#### 第七节：异步编程（Promise, async/await）✅
 
-**完成时间**：第一小节已完成（2026-06-14），第二小节教学+练习已完成（2026-06-19）
-**掌握程度**：事件循环机制理解深入；Promise 构造与链式调用机制理解到位；编码练习综合正确率约 75%（基本掌握）——链返回值/闭包桥接已纠正，JS 闭包生命周期 vs Java 栈模型需持续巩固
+**完成时间**：第一小节（2026-06-14）、第二小节（2026-06-19）、第三小节（2026-06-20）
+**掌握程度**：事件循环机制理解深入；Promise/async-await 机制理解到位；首轮练习 54%（基本掌握，忘记 await + 并发识别薄弱）→ 追加练习 88%（熟练，薄弱点已巩固）→ 整体达到熟练水平
 
 **第一小节：事件循环与异步底层机制** ✅
 - [x] JS 单线程模型 vs Java 多线程（事件循环 + Web API/libuv 线程池）
@@ -321,7 +321,7 @@
 - [x] await "暂停"的真相：函数交出控制权（栈帧弹出），剩余代码包进 .then() 回调
 - [x] await ≠ Java Future.get()：前者不阻塞线程，后者阻塞线程
 
-**第二小节：Promise 构造与链式调用** 🔄 教学完成，练习待做
+**第二小节：Promise 构造与链式调用** ✅
 - [x] Promise 三种状态（pending/fulfilled/rejected）与状态凝固
 - [x] `new Promise(executor)`——executor 同步执行，resolve/reject 只改状态传数据
 - [x] `.then()` 注册回调，返回新 Promise，形成链式调用
@@ -334,13 +334,33 @@
 - [x] Promise 与网络请求的配合：executor 启动请求，`.then()` 善后处理
 - [x] 链式调用数据流：上一级 `_onFulfilled` → resolve 下一级 → 值沿链串行传递
 - [x] Promise 构造与链式调用编码练习（4 题 + 2 题追加，含闭包桥接纠正）
-- [ ] async/await 编码练习
-- [ ] 代码诊断练习
+- [x] async/await 编码练习
+- [x] 代码诊断练习
 
-**产生的疑问**：见 `cocos学习疑问解答.md` → 第七节：异步编程（含 Q6~Q10 及自总结 S1）
+**第三小节：async/await 编码实践** ✅（2026-06-20）
+- [x] async 函数永远返回 Promise（`return 42` → `Promise.resolve(42)`）
+- [x] await 三个核心行为：取出值 / rejection 转 throw / 非 Promise 透传
+- [x] 错误处理两种风格：try/catch（多步骤统一处理）vs .catch() 链（多级降级）
+- [x] 忘记 await 是最隐蔽的 bug——编译器不报错
+- [x] 顺序执行 vs 并发执行：参数是否依赖前一个返回值 → `Promise.all`
+- [x] Promise.all fail-fast 策略：第一个 reject 立即失败，其余错误静默丢失
+- [x] Promise.allSettled 用法：`{ status, value/reason }` 结构，收集全部结果
+- [x] 顶层 await 与 IIFE：`(async () => { ... })()` 解决非 async 上下文用 await
+- [x] async/await vs .then() 链选择：编排逻辑用 await，数据管道用 .then()
+- [x] fire-and-forget 模式：打日志等不依赖返回值时可不 await
+- [x] `Promise.resolve()` 静态方法 vs executor 的 resolve 参数——两个不同东西
 
-**自总结要点**：S1——`.then()` 回调链执行顺序保证机制（`_onFulfilled` 包装 + 链式 resolve + 每级独立 Promise）
-**概念混淆点**：Promise=标志位 / Promise 本身变微任务 / `.then()` 调用会重入 / 链中共用 resolve / `.finally()` 返回值影响链
+**产生的疑问**：见 `cocos学习疑问解答.md` → 第七节：异步编程（含 Q11~Q14）
+
+**自总结要点**：
+- S1——`.then()` 回调链执行顺序保证机制（`_onFulfilled` 包装 + 链式 resolve + 每级独立 Promise）
+- S2——Promise.all fail-fast 与 allSettled 的选择法则：需全部成功用 all，需全部结果用 allSettled
+
+**概念混淆点**：
+- Promise=标志位 / Promise 本身变微任务 / `.then()` 调用会重入 / 链中共用 resolve / `.finally()` 返回值影响链
+- `Promise.resolve()` 静态方法 vs executor 的 `resolve` 参数——同名不同身份
+- `[a, b]` 在不同位置含义不同：`=` 右边创建数组，`=` 左边解构赋值
+- `joinRoom` 返回 `playerCount` 而非 `roomId`——并发分析必须读清 API 签名
 
 ---
 
@@ -398,8 +418,15 @@
 - [x] 异步编程核心认知（单线程 + 时间解耦 = 异步的真相）
 - [x] setTimeout/定时器的不可靠性与时间戳纠偏方案
 - [x] async/await 本质（函数分片 + .then() 微任务）
+- [x] async 函数返回值规则（自动 Promise.resolve 包装）
+- [x] await 的三个核心行为（取值 / reject→throw / 透传非 Promise）
+- [x] try/catch 与 .catch() 链的错误处理风格选择
+- [x] 顺序 vs 并发的依赖分析法（参数来自谁）
+- [x] Promise.all fail-fast 与 Promise.allSettled
+- [x] IIFE 解决非 async 上下文用 await
+- [x] fire-and-forget 模式
 
-**尚未掌握**：async/await 编码实战、声明文件
+**尚未掌握**：声明文件
 
 ---
 
@@ -410,10 +437,10 @@
 3. ~~第四节：泛型（Generic）~~ ✅ 已完成（2026-06-11）
 4. ~~第五节：模块化（import/export）~~ ✅ 已完成（2026-06-12）
 5. ~~第六节：Utility Types~~ ✅ 已完成（2026-06-14）
-6. 第七节：异步编程 🔄 进行中——**下一课：async/await 编码练习 + 代码诊断**
-7. 第八节：声明文件（.d.ts 基本概念）
+6. 第七节：异步编程 ✅ 已完成（2026-06-20，含三小节全部练习）
+7. **第八节：声明文件（.d.ts 基本概念）← 下一课**
 8. 验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）
 
 ---
 
-*文档更新时间：2026-06-20（规则6与规则10合并为「练习互动确认机制」，覆盖发题前→提交前→提交时三阶段）*
+*文档更新时间：2026-06-20（第七节异步编程完结；第三小节async/await编码练习+追加练习完成；答疑归档Q11~Q14+S3~S4）*
