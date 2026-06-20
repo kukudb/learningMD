@@ -105,9 +105,9 @@
 ## 二、学习进度跟踪
 
 ### 总体状态
-- **当前阶段**：TypeScript 基础 → **第七节（异步编程）已完成** → 第八节待开始
-- **下一目标**：第八节：声明文件（.d.ts） → 验收 TypeScript 基础 → 阶段2（Cocos Creator 编辑器）
-- **已完成日期**：2026-06-08（接口 + TS 编译原理）、2026-06-09（接口剩余+练习）、2026-06-10（类型断言与收窄）、2026-06-11（泛型）、2026-06-12（模块化）、2026-06-14（Utility Types + 事件循环）、2026-06-20（async/await 编码实践，第七节完结）
+- **当前阶段**：TypeScript 基础 → **全部完成（第八节完结）** → 下一阶段：Cocos Creator 编辑器
+- **下一目标**：验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）
+- **已完成日期**：2026-06-08 ~ 2026-06-21（第一节至第八节全部完成）
 
 ---
 
@@ -365,10 +365,58 @@
 
 ---
 
+#### 第八节：声明文件（.d.ts）✅
+
+**完成时间**：2026-06-21
+**掌握程度**：熟练（首轮练习 ~80%，namespace 语法薄弱；追加练习 100%，薄弱点已巩固）
+
+**第一小节：.d.ts 的本质与基本结构** ✅
+- [x] `.d.ts` 核心定位——只含类型声明、不含可执行代码的 TS 文件
+- [x] `declare` 关键字含义："实现在别处，这里只描述类型"
+- [x] 与 C 语言 `.h` 头文件的类比（声明/实现分离）及关键区别（TS 不文本展开）
+- [x] `.d.ts` vs 普通 `.ts` 的本质区别（编译产出、包含实现、核心用途）
+- [x] 声明文件三种来源（库自带 / DefinitelyTyped / 自己写）
+- [x] 核心判断：「类型和实现在同文件 → .ts」「类型描述的是别人的 JS → .d.ts」
+- [x] `declaration: true` 编译器自动生成 `.d.ts`——自己的 TS 库无需手动写
+
+**第二小节：常见声明模式** ✅
+- [x] 脚本模式 vs 模块模式——`import/export` 有无决定声明是全局还是模块作用域
+- [x] 声明全局变量/常量：`declare let/const`
+- [x] 声明全局函数：`declare function`（只有签名，无函数体）
+- [x] 声明全局类：`declare class`（只有成员签名，无方法体）
+- [x] 声明全局命名空间：`declare namespace`（组织嵌套声明，匹配 JS 对象层级）
+- [x] 声明 npm 模块（导出对象）：`declare module 'pkg' { export function ... }`
+- [x] 声明 npm 模块（模块本身是函数）：`declare module 'pkg' { function ...; export = ... }`
+- [x] `export =` vs `export { }`——CJS `module.exports = oneThing` vs `module.exports = { a, b }`
+
+**第三小节：Cocos Creator 中的 .d.ts 实践** ✅
+- [x] Cocos 引擎的 `cc.d.ts` 存在位置与作用——全局脚本模式声明文件
+- [x] Ctrl+点击 API 跳转到 `declare` 声明行——快速查看参数和返回值类型
+- [x] 项目中手动写 `.d.ts` 的唯一场景：为纯 JS 旧代码 / 全局注入变量补类型
+
+**实际完成的练习代码**
+- 题目一：代码诊断（5 处问题：export→declare、函数体移除、class→declare class、export function→export=）
+- 题目二：声明设计（GameEnv namespace、math-utils 模块、short-uuid 函数模块、EventHub 泛型类）
+- 追加练习：namespace 语法巩固（4 处修正，全部正确）
+
+**产生的疑问**：见 `cocos学习疑问解答.md` → 第八节：声明文件（.d.ts）
+
+**概念混淆点**：
+- `declare namespace` 内部使用 `const X = { ... }` 对象字面量语法——把"声明形状"和"定义 JS 对象"混为一谈
+- `typeof "web"` 在类型位置期望得到字面量类型——实际 `typeof` 返回的是 JS 运行时类型字符串（`"string"`）
+- `declare const GameEnv: { ... }` 与 `declare namespace GameEnv { ... }` 等价——选择源于风格/嵌套结构偏好，非语法强制
+- 全局变量和 `window` 属性的关系：JS 运行时自动等价，TS 类型检查走独立路径（全局符号 vs Window 接口）
+
+**练习易错模式**：
+- namespace 内部语法：成员直接声明，不需要也不允许 `const X = { }` 包裹
+- `export =` 缺失：CJS `module.exports = 函数` 对应的声明是 `function ...; export = ...`
+
+---
+
 
 ### 未开始的学习内容
 
-#### 第八节：声明文件（.d.ts）
+（无——TypeScript 基础阶段全部完成）
 
 ---
 
@@ -426,22 +474,31 @@
 - [x] Promise.all fail-fast 与 Promise.allSettled
 - [x] IIFE 解决非 async 上下文用 await
 - [x] fire-and-forget 模式
+- [x] `.d.ts` 本质——声明文件、`declare` 关键字、编译后消失
+- [x] `.d.ts` vs `.ts` 区分——类型描述的是自己还是别人的代码
+- [x] 脚本模式（全局声明）vs 模块模式（`declare module`）
+- [x] `declare let/const`、`declare function`、`declare class`、`declare namespace`
+- [x] `declare module` + `export { }` vs `export =`
+- [x] `declaration: true` 自动生成 `.d.ts`
+- [x] Cocos `cc.d.ts` 定位与 Ctrl+点击查 API 签名
+- [x] JS 全局变量 ↔ `window` 属性 ↔ TS 类型检查路径的区分
 
-**尚未掌握**：声明文件
+**尚未掌握**：无——TypeScript 基础阶段全部完成
 
 ---
 
 ### 下一步行动
 
-1. ~~继续第三节：接口（Interface）~~ ✅ 已完成
-2. ~~补齐类型断言与收窄~~ ✅ 已完成（2026-06-10）
-3. ~~第四节：泛型（Generic）~~ ✅ 已完成（2026-06-11）
-4. ~~第五节：模块化（import/export）~~ ✅ 已完成（2026-06-12）
-5. ~~第六节：Utility Types~~ ✅ 已完成（2026-06-14）
-6. 第七节：异步编程 ✅ 已完成（2026-06-20，含三小节全部练习）
-7. **第八节：声明文件（.d.ts 基本概念）← 下一课**
-8. 验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）
+1. ~~第一节：变量与数据类型~~ ✅
+2. ~~第二节：函数与类~~ ✅
+3. ~~第三节：接口（Interface）~~ ✅
+4. ~~第四节：泛型（Generic）~~ ✅
+5. ~~第五节：模块化（import/export）~~ ✅
+6. ~~第六节：Utility Types~~ ✅
+7. ~~第七节：异步编程~~ ✅
+8. ~~第八节：声明文件（.d.ts）~~ ✅
+9. **验收 TypeScript 基础 → 进入阶段2（Cocos Creator 编辑器）← 下一站**
 
 ---
 
-*文档更新时间：2026-06-20（第七节异步编程完结；第三小节async/await编码练习+追加练习完成；答疑归档Q11~Q14+S3~S4）*
+*文档更新时间：2026-06-21（第八节声明文件完成，TypeScript 基础阶段全部完结）*

@@ -1272,3 +1272,96 @@ declare function placeOrder(itemId: number, qty: number): Promise<{ orderId: str
 > 两个异步调用能否并发，看第二个调用的参数是否来自第一个调用的返回值。如果参数互不依赖 → Promise.all 并发；如果一个需要另一个的返回值 → 必须串行 await。判断时要精读 API 签名——不能凭变量名猜测返回内容（如 `joinRoom` 返回 `playerCount` 而不是 `roomId`）。
 
 **核心概念标签**：`依赖分析` · `Promise.all` · `串行 vs 并发` · `API 签名阅读`
+
+---
+
+## 第八节：声明文件（.d.ts）
+
+### 问答记录
+
+#### Q15：接口是否应该都写在 .d.ts 文件中？
+
+**学习者的原始视角**：既然 .d.ts 是放类型声明的地方，那日常写的 interface 是不是应该放 .d.ts？
+
+**暴露出的概念混淆**：把 .d.ts 定位为"放接口的好地方"，而非"给别人的 JS 贴类型标签的地方"
+
+**核心原理**：
+- `.d.ts` 的语义是"实现在别处"，自己的 TS 代码类型和实现在一起即可
+- `declaration: true` 编译选项自动从 `.ts` 生成 `.d.ts`，无需手写
+- 手动写 `.d.ts` 的唯一场景：描述没有 `.ts` 源码的外部 JS
+
+> **关联知识点**：C `.h` 头文件类比——声明/实现分离是 C 编译器的局限，TS 编译器全局索引所有文件，不需要手动"前置声明"
+
+---
+
+#### Q16：没有 TS 源码为什么还要写 .d.ts？
+
+**学习者的原始视角**：既然 JS 能直接调，编译器不管，为什么费劲写声明？
+
+**暴露出的概念混淆**：把 .d.ts 理解成"给别人用/发布库"时才需要，忽略了"给自己买保险"的防御价值
+
+**核心原理**：不写 .d.ts 调 JS → 返回 `any` → 不校验 → 运行时炸。写 .d.ts → 有类型 → TS 编译期校验。.d.ts 是写给自己用的，每次调用都有编译器保护
+
+---
+
+#### Q17：`declare namespace` 内部能否用 `const X = { ... }` 语法？
+
+**学习者的原始视角**：从 JS 对象字面量思维出发——既然 JS 里 `GameEnv = { PLATFORM: 'web' }`，声明文件就用 `const GameEnv = { PLATFORM: string }` 描述
+
+**暴露出的概念混淆**：把"声明形状"和"定义 JS 对象"混为一谈
+
+**核心原理**：
+- `declare namespace` 内部成员直接声明，不需要也不能用 `const X = { }` 包裹
+- 等价写法：`declare namespace GameEnv { ... }` ≡ `declare const GameEnv: { ... }`
+- 选择 namespace 还是 const 是风格偏好，非语法要求——嵌套结构深时 namespace 更清晰
+
+> **练习上下文**：
+> ```ts
+> // ❌ 把声明语法写成 JS 对象字面量
+> declare namespace window {
+>   const AppConfig = {
+>     APP_NAME: string;
+>     settings: { volume: number; language: string; };
+>   };
+> }
+> // JS 背景：window.AppConfig = { APP_NAME: 'MyGame', settings: { volume: 0.8 } }
+> ```
+
+---
+
+#### Q18：`window.GameEnv` 和 `GameEnv` 在 TS 类型检查中为何表现不同？
+
+**学习者的原始视角**：JS 里两者指向同一个东西，TS 类型检查应该自动等效
+
+**暴露出的概念混淆**：JS 运行时行为 vs TS 类型检查路径的断层
+
+**核心原理**：
+- JS 运行时：全局变量自动成为 `window` 属性，`GameEnv === window.GameEnv`
+- TS 类型检查：`GameEnv` 查全局符号表，`window.GameEnv` 查 `Window` 接口——两条独立路径，不自动同步
+- `window` 的 TS 类型是 `var window: Window`，`Window` 是一个 `interface`
+- 要让 `window.GameEnv` 通过类型检查，需通过接口合并给 `Window` 追加属性：`declare interface Window { GameEnv: ... }`
+
+> **练习上下文**：
+> ```ts
+> // JS 运行时：window.AppConfig = { APP_NAME: 'MyGame', ... }
+> // .d.ts 脚本模式下，声明为 declare namespace AppConfig 即全局可用
+> // 但 window.AppConfig.xxx 能否通过 TS 检查，取决于 Window 接口是否做了合并
+> ```
+
+---
+
+### 概念混淆点
+
+- 把 .d.ts 当成"放接口的地方"而非"给无类型 JS 贴标签"——日常写 .ts 文件即可，不需要把 interface 搬到 .d.ts
+- `declare namespace` 内部使用 `const X = { ... }` 对象字面量——namespace 成员直接声明，不需要也不允许包裹
+- `typeof "web"` 在类型位置返回 `"string"` 而非字面量 `"web"`——`typeof` 取的是 JS 运行时类型名称
+- `declare const X: { ... }` 与 `declare namespace X { ... }` 等价但学习者以为 namespace 是强制——实为风格选择
+- JS 全局变量与 `window` 属性自动等价，但 TS 类型检查走独立路径——不会自动同步
+
+### 练习易错模式
+
+| 易错模式 | 出现频次 | 根因 |
+|---------|---------|------|
+| `const X = { ... }` 写在 namespace 内 | 2 次（练习场景 A + 追加练习） | JS 对象字面量习惯侵入 TS 声明语法 |
+| CJS `module.exports = 函数` 对应声明用 `export function` 而非 `export =` | 1 次（练习题目二场景 C） | 未区分"模块导出对象"和"模块本身就是函数" |
+| `typeof` 误用于取字面量类型 | 1 次（练习场景 A） | `typeof` 在 JS 和 TS 类型位置的语义差异 |
