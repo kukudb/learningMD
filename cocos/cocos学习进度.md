@@ -549,14 +549,33 @@
 
 ---
 
+### 学习素材资源清单
+
+以下三个资源库作为项目驱动学习的参考素材和示例来源：
+
+| 优先级 | 仓库 | 来源 | 说明 | 状态 |
+|--------|------|------|------|------|
+| 🥇 主 | cocos-test-projects | github.com/cocos/cocos-test-projects | 覆盖引擎大部分功能模块，含 2D 动画、Sprite 动画 | ✅ 已克隆到 `project/cocos-test-projects/` |
+| 🥈 次 | cocos-example-marionette | github.com/cocos/cocos-example-marionette | 动画状态机、事件、IK（偏 3D，但状态机概念通用） | ❌ 待克隆 |
+| 🥉 补 | CocosCreatorDemos | gitee.com/xuesongtao/CocosCreatorDemos | 社区实践示例集合 | ❌ 待克隆 |
+
 ### 下一步行动
 
-**当前**：打开 cocos-test-projects → 按学习路径预览动画示例场景
-  1. SwitchAnimation.scene（动画切换）
-  2. AnimationEvent.scene（动画事件）
-  3. PlaybackRange.scene（播放范围）
-  4. EasingMethods.scene（缓动方法）
-**下一需求驱动学习点**：看完示例后确定项目方向（用哪个项目实践动画系统）
+**阶段一：从 cocos-test-projects 入手**（已有克隆，直接使用）
+1. 预览动画相关示例场景：
+   - SwitchAnimation.scene（动画切换）
+   - AnimationEvent.scene（动画事件）
+   - PlaybackRange.scene（播放范围）
+   - EasingMethods.scene（缓动方法）
+2. 浏览其他感兴趣的功能模块作为项目选型的参考
+
+**阶段二：确定第一个项目方向**
+- 看完示例后确定用哪个项目实践动画系统
+- 根据项目需要决定是否克隆 marionette / CocosCreatorDemos 作为参考
+
+**阶段三：项目驱动学习**
+- 边做项目 → 遇需求 → 深学对应 Cocos 系统
+- 从 learnCoCOs.md 查询引擎能力，按需深入
 
 ---
 
